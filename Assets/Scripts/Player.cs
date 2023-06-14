@@ -48,7 +48,7 @@ public class Player : MonoBehaviour
 
             if (firVal == secVal && firTile != secTile)
             {
-                GetComponent<AStar>().GoToA(firTile.tileX, firTile.tileY, secTile.tileX, secTile.tileY);
+                GetComponent<AStar2>().GoFind(new Vector2Int(firTile.tileX, firTile.tileY), new Vector2Int(secTile.tileX, secTile.tileY));
             }
             else
             {

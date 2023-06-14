@@ -35,7 +35,6 @@ public class GameManager : MonoBehaviour
 
     public int[,] returnGrid()
     {
-        Debug.Log("returnGrid: " + grid);
         return grid;
     }
 
@@ -80,7 +79,7 @@ public class GameManager : MonoBehaviour
         InitList(boardRow, boardCol);
         MakeBoard();
 
-        /*
+
         for (int y = 0; y < grid.GetLength(0); y++)
         {
             string temp = "";
@@ -90,7 +89,7 @@ public class GameManager : MonoBehaviour
             }
             Debug.Log(temp);
         }
-        */
+
     }
 
 }
