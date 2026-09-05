@@ -12,6 +12,26 @@ public class Player : MonoBehaviour
     int firVal = -1;
     int secVal = -1;
 
+    GameManager gameManager;
+
+    LineRenderer lineRenderer;
+
+    const float pathDisplayDuration = 0.3f;
+
+    void Start()
+    {
+        gameManager = GetComponent<GameManager>();
+
+        lineRenderer = gameObject.AddComponent<LineRenderer>();
+        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+        lineRenderer.startColor = Color.yellow;
+        lineRenderer.endColor = Color.yellow;
+        lineRenderer.startWidth = 0.1f;
+        lineRenderer.endWidth = 0.1f;
+        lineRenderer.sortingOrder = 10;
+        lineRenderer.enabled = false;
+    }
+
     void Update()
     {
         MouseClickDown();
@@ -34,7 +54,7 @@ public class Player : MonoBehaviour
 
     void TileClicked(RaycastHit2D hit)
     {
-        
+
         if (firVal == -1)
         {
             firTile = hit.collider.GetComponent<Tile>();
@@ -48,7 +68,21 @@ public class Player : MonoBehaviour
 
             if (firVal == secVal && firTile != secTile)
             {
-                GetComponent<AStar2>().GoFind(new Vector2Int(firTile.tileX, firTile.tileY), new Vector2Int(secTile.tileX, secTile.tileY));
+                List<Vector2Int> path;
+                bool found = GetComponent<DFS>().GoFind(new Vector2Int(firTile.tileX, firTile.tileY), new Vector2Int(secTile.tileX, secTile.tileY), out path);
+
+                if (found)
+                {
+                    StartCoroutine(ShowPathThenRemove(path, firTile, secTile));
+                }
+                else
+                {
+                    firTile.ClickedOut();
+                }
+
+                firVal = -1;
+                firTile = null;
+                secTile = null;
             }
             else
             {
@@ -57,6 +91,29 @@ public class Player : MonoBehaviour
                 firTile = null;
             }
         }
+    }
+
+    IEnumerator ShowPathThenRemove(List<Vector2Int> path, Tile a, Tile b)
+    {
+        lineRenderer.positionCount = path.Count;
+        for (int i = 0; i < path.Count; i++)
+        {
+            lineRenderer.SetPosition(i, gameManager.GridToWorld(path[i].x, path[i].y));
+        }
+        lineRenderer.enabled = true;
+
+        yield return new WaitForSeconds(pathDisplayDuration);
+
+        lineRenderer.enabled = false;
+
+        RemoveTile(a);
+        RemoveTile(b);
+    }
+
+    void RemoveTile(Tile tile)
+    {
+        gameManager.grid[tile.tileY, tile.tileX] = 0;
+        Destroy(tile.gameObject);
     }
 
 }

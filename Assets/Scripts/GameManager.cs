@@ -9,8 +9,8 @@ public class GameManager : MonoBehaviour
 
     public int[,] grid;
 
-    public int boardRow; //ÃÖ´ë 8
-    public int boardCol; //ÃÖ´ë 8
+    public int boardRow; //ìµœëŒ€ 8
+    public int boardCol; //ìµœëŒ€ 8
     public int objectCount_half;
 
     public GameObject tile;
@@ -18,6 +18,13 @@ public class GameManager : MonoBehaviour
     Transform boardHolder;
 
     Sprite[] tilePicSet;
+
+    const float tileYScale = 1.46f;
+
+    public Vector3 GridToWorld(int x, int y)
+    {
+        return new Vector3(x, y * tileYScale, 0f);
+    }
 
 
     void InitList(int row, int col)
@@ -59,7 +66,7 @@ public class GameManager : MonoBehaviour
             for (int j = 0; j < 2; j++)
             {
                 Vector2 vec = RandomPos();
-                GameObject temp = Instantiate(tile, new Vector2(vec.x, vec.y*1.46f), Quaternion.identity);
+                GameObject temp = Instantiate(tile, GridToWorld((int)vec.x, (int)vec.y), Quaternion.identity);
                 SpriteRenderer SR = temp.transform.GetChild(0).gameObject.GetComponent<SpriteRenderer>();
                 SR.sprite = tilePicSet[tileValue];
                 temp.GetComponent<Tile>().tileValue = tileValue;

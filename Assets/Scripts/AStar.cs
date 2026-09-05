@@ -4,213 +4,205 @@ using UnityEngine;
 
 public class AStar : MonoBehaviour
 {
-    private List<Node> openList;
-    private List<Node> closedList;
+    // 그리드의 크기
+    int gridSizeX;
+    int gridSizeY;
 
-    int[,] grid;
-    Node[,] newGrid;
+    // 시작 노드와 목표 노드의 위치
+    public Vector2Int startNodePosition;
+    public Vector2Int targetNodePosition;
 
-    Node minNode;
-    int min;
+    // 2차원 배열 그리드
+    private Node[,] grid;
 
+    public GameManager gameManager;
 
-
-    private void Start()
+    public void GoFind(Vector2Int startNodePosition, Vector2Int targetNodePosition)
     {
-        // A* �˰������� �����ϱ� ���� openList�� closedList�� �ʱ�ȭ�մϴ�.
-        openList = new List<Node>();
-        closedList = new List<Node>();
-        grid = GameObject.Find("GameManager").GetComponent<GameManager>().returnGrid();
-        newGrid = new Node[grid.GetLength(0), grid.GetLength(1)];
+        // 그리드 초기화
+        InitGrid();
 
-        for (int y = 0; y < grid.GetLength(0); y++)
+        List<Node> path = FindPath(startNodePosition, targetNodePosition);
+        // 최적 경로 출력
+        if (path != null)
         {
-            for (int x = 0; x < grid.GetLength(1); x++)
+            Debug.Log("최적 경로:");
+            foreach (Node node in path)
             {
-                if (grid[y, x] == 0)
-                {
-                    Node temp = new Node();
-                    temp.y = y;
-                    temp.x = x;
-                    temp.check = true;
-                    newGrid[y, x] = temp;
-                }
-                else
-                {
-                    newGrid[y, x] = new Node();
-                    newGrid[y, x].check = false;
-                }
+                Debug.Log(node.position);
             }
         }
-        SetNeighbors();
-
-    }
-
-    public void GoToA(int curX, int curY, int targetX, int targetY)
-    {
-        Node curNode = newGrid[curY, curX];
-        curNode.x = curX;
-        curNode.y = curY;
-
-        Node targetNode = newGrid[targetY, targetX];
-        targetNode.x = targetX;
-        targetNode.y = targetY;
-
-        curNode.G = 0;
-        curNode.H = GetH(curNode, targetNode);
-        curNode.F = curNode.G + curNode.H;
-
-        FindPath(curNode, targetNode);
-    }
-
-    void SetNeighbors()
-    {
-        for (int y = 0; y < newGrid.GetLength(0); y++)
+        else
         {
-            for (int x = 0; x < newGrid.GetLength(1); x++)
+            Debug.Log("경로를 찾을 수 없습니다.");
+        }
+    }
+
+    // 그리드 초기화 메서드
+    private void InitGrid()
+    {
+        int[,] _grid = gameManager.returnGrid();
+        gridSizeY = _grid.GetLength(0);
+        gridSizeX = _grid.GetLength(1);
+
+        grid = new Node[gridSizeX, gridSizeY];
+
+        for (int x = 0; x < gridSizeX; x++)
+        {
+            for (int y = 0; y < gridSizeY; y++)
             {
-                if (newGrid[y, x].check == true)
-                {
-                    if (y != 0)
-                        //if(newGrid[y - 1, x].check == true)
-                            newGrid[y, x].AddNeighbor(newGrid[y - 1, x]);
-                    if(y != newGrid.GetLength(0)-1)
-                        //if (newGrid[y + 1, x].check == true)
-                            newGrid[y, x].AddNeighbor(newGrid[y + 1, x]);
-                    if (x != 0)
-                        //if (newGrid[y, x - 1].check == true)
-                            newGrid[y, x].AddNeighbor(newGrid[y, x - 1]);
-                    if (x != newGrid.GetLength(1)-1)
-                        //if (newGrid[y, x + 1].check == true)
-                            newGrid[y, x].AddNeighbor(newGrid[y, x + 1]);
-                }
+                // 각 노드의 위치와 이웃 노드 설정
+                grid[x, y] = new Node(new Vector2Int(x, y));
+                // _grid는 GameManager 기준 [y, x](row, col) 순서라 x/y를 바꿔서 조회해야 함
+                if (_grid[y, x] == 1)
+                    grid[x, y].isObstacle = true;
             }
         }
     }
 
-    private void FindPath(Node startNode, Node targetNode)
+    // A* 알고리즘 메서드
+    private List<Node> FindPath(Vector2Int start, Vector2Int target)
     {
-        
+        // 시작 노드와 목표 노드 가져오기
+        Node startNode = grid[start.x, start.y];
+        Node targetNode = grid[target.x, target.y];
 
-        openList.Clear();
-        closedList.Clear();
+        // 오픈 리스트와 클로즈드 리스트 초기화
+        List<Node> openList = new List<Node>();
+        List<Node> closedList = new List<Node>();
 
-
+        // 시작 노드를 오픈 리스트에 추가
         openList.Add(startNode);
 
-        Node currentNode = openList[0];
-
-        foreach(Node nextNode in currentNode.neighbors)
+        while (openList.Count > 0)
         {
-            Debug.Log("??");
+            // 현재 노드 설정
+            Node currentNode = openList[0];
+            //Debug.Log(currentNode.position);
+            for (int i = 1; i < openList.Count; i++)
+            {
+                if (openList[i].fCost < currentNode.fCost ||
+                    openList[i].fCost == currentNode.fCost && openList[i].hCost < currentNode.hCost)
+                {
+                    currentNode = openList[i];
+                }
+            }
 
-            nextNode.parent = currentNode;
-            nextNode.G = 10;
-            nextNode.H = GetH(nextNode, targetNode);
-            nextNode.F = nextNode.G + nextNode.H;
-
-            openList.Add(nextNode);
-
-        }
-
-
-        openList.Remove(currentNode);
-        closedList.Add(currentNode);
-
-
-        //���Ž�� 2
-        while (true)
-        {
-            currentNode = FindMinNode(openList);
-
+            // 현재 노드를 오픈 리스트에서 제거하고 클로즈드 리스트에 추가
             openList.Remove(currentNode);
             closedList.Add(currentNode);
 
-            Debug.Log(currentNode);
-
-            foreach (Node nextNode in currentNode.neighbors)
+            // 목표 노드에 도달했는지 확인
+            if (currentNode == targetNode)
             {
-                if (!closedList.Contains(nextNode))
+                // 최적 경로 반환
+                Debug.Log("탐색성공");
+                return RetracePath(startNode, targetNode);
+            }
+
+            // 이웃 노드 탐색
+            foreach (Node neighbor in GetNeighbors(currentNode))
+            {
+                // 이웃 노드가 클로즈드 리스트에 있는 경우 건너뜀
+                if (closedList.Contains(neighbor))
                 {
-                    if (!openList.Contains(nextNode))
+                    continue;
+                }
+
+                // 이웃 노드의 이동 비용 계산
+                int newMovementCostToNeighbor = currentNode.gCost + GetDistance(currentNode, neighbor);
+
+                // 이웃 노드가 오픈 리스트에 없거나 더 적은 비용으로 도달할 수 있는 경우
+                if (!openList.Contains(neighbor) || newMovementCostToNeighbor < neighbor.gCost)
+                {
+                    // 이웃 노드의 G, H, F 값을 업데이트하고 부모 노드를 현재 노드로 설정
+                    neighbor.gCost = newMovementCostToNeighbor;
+                    neighbor.hCost = GetDistance(neighbor, targetNode);
+                    neighbor.parent = currentNode;
+
+                    // 이웃 노드가 오픈 리스트에 없다면 추가
+                    if (!openList.Contains(neighbor))
                     {
-                        nextNode.parent = currentNode;
-                        nextNode.G = currentNode.G + 10;
-                        nextNode.H = GetH(nextNode, targetNode);
-                        nextNode.F = nextNode.G + nextNode.H;
-                        openList.Add(nextNode);
-                    }
-                    else
-                    {
-                        if (currentNode.G + 10 < nextNode.G)
-                        {
-                            nextNode.parent = currentNode;
-                            nextNode.G = currentNode.G + 10;
-                            nextNode.F = nextNode.G + nextNode.H;
-                        }
+                        openList.Add(neighbor);
                     }
                 }
             }
-
-            if (openList.Count == 0 || openList.Contains(targetNode))
-            {
-                Debug.Log("ã�Ѵ� ����");
-                return;
-            }
         }
+
+        // 경로를 찾을 수 없음
+        Debug.Log("탐색불가");
+        return null;
     }
 
-    private int GetH(Node nodeA, Node nodeB)
+    // 최적 경로를 역추적하는 메서드
+    private List<Node> RetracePath(Node startNode, Node endNode)
     {
-        int result = 0;
+        List<Node> path = new List<Node>();
+        Node currentNode = endNode;
 
-        result += Mathf.Abs(nodeB.y - nodeA.y);
-        result += Mathf.Abs(nodeB.x - nodeA.x);
+        while (currentNode != startNode)
+        {
+            path.Add(currentNode);
+            currentNode = currentNode.parent;
+        }
 
-        return result;
+        path.Reverse();
+
+        return path;
     }
 
-    Node FindMinNode(List<Node> openList)
+    // 노드의 이웃을 찾는 메서드
+    private List<Node> GetNeighbors(Node node)
     {
-        min = int.MaxValue;
-        minNode = null;
+        List<Node> neighbors = new List<Node>();
 
-
-        for (int i = 0; i < openList.Count; i++)
+        // 현재 노드의 상하좌우 이웃을 확인하고 그리드 내에 있는지 검사
+        if (node.position.x - 1 >= 0 && !grid[node.position.x - 1, node.position.y].isObstacle)
         {
-            if (openList[i].F < min)
-            {
-                min = openList[i].F;
-                minNode = openList[i];
-            }
+            neighbors.Add(grid[node.position.x - 1, node.position.y]);
+        }
+        if (node.position.x + 1 < gridSizeX && !grid[node.position.x + 1, node.position.y].isObstacle)
+        {
+            neighbors.Add(grid[node.position.x + 1, node.position.y]);
+        }
+        if (node.position.y - 1 >= 0 && !grid[node.position.x, node.position.y - 1].isObstacle)
+        {
+            neighbors.Add(grid[node.position.x, node.position.y - 1]);
+        }
+        if (node.position.y + 1 < gridSizeY && !grid[node.position.x, node.position.y + 1].isObstacle)
+        {
+            neighbors.Add(grid[node.position.x, node.position.y + 1]);
         }
 
-        //�����
-        if (minNode == null)
-        {
-            Debug.Log("minNode is null");
-        }
+        return neighbors;
+    }
 
-        return minNode;
+    // 두 노드 사이의 거리를 계산하는 메서드 (Manhattan 거리 사용)
+    private int GetDistance(Node nodeA, Node nodeB)
+    {
+        int distanceX = Mathf.Abs(nodeA.position.x - nodeB.position.x);
+        int distanceY = Mathf.Abs(nodeA.position.y - nodeB.position.y);
+
+        return distanceX + distanceY;
     }
 }
 
+// 그리드의 각 노드를 나타내는 클래스
 public class Node
 {
-    public bool check;
+    public Vector2Int position; // 노드의 위치
+    public int gCost; // 시작 노드로부터의 이동 비용
+    public int hCost; // 목표 노드까지의 예상 이동 비용
+    public int fCost => gCost + hCost; // 총 이동 비용
+    public Node parent; // 부모 노드
+    public bool isObstacle;
 
-    public int x;
-    public int y;
-
-    public int G;
-    public int H;
-    public int F;
-    public Node parent;
-    public List<Node> neighbors = new List<Node>();
-
-    public void AddNeighbor(Node nNode)
+    public Node(Vector2Int pos)
     {
-        if (nNode != null)
-            this.neighbors.Add(nNode);
+        position = pos;
+        gCost = 0;
+        hCost = 0;
+        parent = null;
+        isObstacle = false;
     }
 }*/
